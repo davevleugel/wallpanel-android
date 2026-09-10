@@ -32,13 +32,14 @@ import timber.log.Timber
  * Created by Michael Ritchie on 7/6/18.
  */
 class MotionDetector private constructor(
-    private val minLuma: Int, 
+    private val minLuma: Int,
     private val motionLeniency: Int,
     private val frameSkip: Int
 ) : Detector<Motion>() {
 
     private var aggregateLumaMotionDetection: AggregateLumaMotionDetection? = null
     private var frameCount = 0
+    private var consecutiveMotionFrames = 0
 
     init {
         aggregateLumaMotionDetection = AggregateLumaMotionDetection()
@@ -56,7 +57,7 @@ class MotionDetector private constructor(
                     return SparseArray()
                 }
             }
-            
+
             val byteBuffer = frame.grayscaleImageData
             val bytes = byteBuffer.array()
             val w = frame.metadata.width
@@ -73,6 +74,9 @@ class MotionDetector private constructor(
                 lumaSum += i
             }
             if (lumaSum < minLuma) {
+                // Camera gain/noise is especially unstable in very dark scenes. Never carry
+                // a pending motion hit across a too-dark frame.
+                consecutiveMotionFrames = 0
                 motion.type = MOTION_TOO_DARK
                 sparseArray.put(0, motion)
                 return sparseArray
@@ -81,12 +85,22 @@ class MotionDetector private constructor(
             try {
                 val motionDetected = aggregateLumaMotionDetection!!.detect(img, w, h)
                 if (motionDetected) {
-                    motion.type = MOTION_DETECTED
+                    consecutiveMotionFrames++
+                    // A single changed frame is commonly caused by auto-exposure or sensor
+                    // noise in low light. Require two processed frames before reporting motion.
+                    motion.type = if (consecutiveMotionFrames >= REQUIRED_MOTION_FRAMES) {
+                        consecutiveMotionFrames = 0
+                        MOTION_DETECTED
+                    } else {
+                        MOTION_NOT_DETECTED
+                    }
                 } else {
+                    consecutiveMotionFrames = 0
                     motion.type = MOTION_NOT_DETECTED
                 }
             } catch (e: Exception) {
                 Timber.e(e.message)
+                consecutiveMotionFrames = 0
                 motion.type = MOTION_NOT_DETECTED
             }
             sparseArray.put(0, motion)
@@ -95,12 +109,16 @@ class MotionDetector private constructor(
     }
 
     class Builder(
-        private val minLuma: Int, 
+        private val minLuma: Int,
         private val motionLeniency: Int,
         private val frameSkip: Int = 10
     ) {
         fun build(): MotionDetector {
             return MotionDetector(minLuma, motionLeniency, frameSkip)
         }
+    }
+
+    companion object {
+        private const val REQUIRED_MOTION_FRAMES = 2
     }
 }
