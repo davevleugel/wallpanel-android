@@ -72,6 +72,7 @@ class MotionDetector private constructor(
             for (i in img) {
                 lumaSum += i
             }
+            Timber.i("MotionDetector lumaSum=%d minLuma=%d size=%dx%d", lumaSum, minLuma, w, h)
             if (lumaSum < minLuma) {
                 motion.type = MOTION_TOO_DARK
                 sparseArray.put(0, motion)
