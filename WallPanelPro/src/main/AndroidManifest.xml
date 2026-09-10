@@ -10,7 +10,6 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" /> <!-- Camera foreground service on modern Android -->
     <!-- Permission to record video -->
     <uses-permission android:name="android.permission.CAMERA" /> <!-- Permissions to record audio from web page -->
     <uses-permission android:name="android.permission.MICROPHONE" />
@@ -98,7 +97,6 @@
             android:name="xyz.wallpanel.pro.network.WallPanelService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="camera"
             android:stopWithTask="true" />
 
         <receiver
